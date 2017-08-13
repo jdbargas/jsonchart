@@ -14,23 +14,28 @@ func main() {
 	arg2 := os.Args[2] // delay from cmd in secs
 	arg3 := os.Args[3] // iterations from cmd
 
+	redisHost := "redis"
+	if len(os.Args) > 4 {
+		redisHost = os.Args[4] // redis host
+	}
+
 	url, delay, iterations, er := validateArgs(arg1, arg2, arg3)
 	if er != nil {
 		fmt.Println(er.Error())
 		return
 	}
 
-	alwaysBeGettin(url, delay, iterations)
+	alwaysBeGettin(url, delay, iterations, redisHost)
 }
 
-func alwaysBeGettin(url string, delay int, iterations int) {
+func alwaysBeGettin(url string, delay int, iterations int, redisHost string) {
 
 	flattenedMatrix := make(map[string]map[string][]float64)
 	i := 1
 	for i <= iterations {
-		jsonMap := fetchJson(url)
+		jsonMap := fetchJSON(url)
 		metrics := getMetrics(jsonMap)
-		conn := connectRedis("redis")
+		conn := connectRedis(redisHost)
 		storeMetrics(url, conn, metrics)
 		matrix := getStoredMetricMatrix(url, conn)
 		flattenedMatrix = flattenMetricMatrix(url, matrix)
@@ -39,7 +44,8 @@ func alwaysBeGettin(url string, delay int, iterations int) {
 		time.Sleep(time.Second * time.Duration(delay))
 		i++
 	}
-	writeGChartHtml()
+	writeGChartHTML()
+	fmt.Println(flattenedMatrix)
 	writeGChartJs(url, delay, iterations, flattenedMatrix[url])
 }
 
@@ -60,13 +66,13 @@ func validateArgs(arg1 string, arg2 string, arg3 string) (string, int, int, erro
 	}
 
 	// Validate URL
-	url, er := parseUrl(arg1)
+	url, er := parseURL(arg1)
 	if er != nil {
 		return "", -1, -1, errors.New(er.Error())
 	}
 
 	// Make sure data can be retrieved from URL
-	s, er := fetchUrlData(url)
+	s, er := fetchURLData(url)
 	if er != nil {
 		return "", -1, -1, errors.New(er.Error())
 	}
